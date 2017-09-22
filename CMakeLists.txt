@@ -2,7 +2,8 @@ cmake_minimum_required(VERSION 3.8)
 project(mt_grav)
 
 set(CMAKE_CXX_STANDARD 14)
-MATH(EXPR stack_size "1 * 1024 * 1024") # 16 Mb
+MATH(EXPR stack_size "1 * 1024 * 1024")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -msse4.1")
 
 message(STATUS "Checking OpenMP")
 find_package(OpenMP)

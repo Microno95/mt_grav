@@ -191,14 +191,26 @@ public:
         return std::accumulate(cofactors.begin(), cofactors.end(), Matrix<dtype, 1, 1>());
     }
 
-    Matrix<dtype, 1, (N < M ? N : M)> diag() const {
+    template <std::size_t A = N, std::size_t B = M>
+    std::enable_if_t<(A < 64 && B < 64), Matrix<dtype, 1, (N < M ? N : M)>> diag() const
+    {
+        Matrix<dtype, 1, (N < M ? N : M)> ret_matrix;
+        for (size_t i = 0; i < (N < M ? N : M); ++i) {
+            ret_matrix.set(0, i, this->get(i, i));
+        }
+        return ret_matrix;
+    }
+
+    template <std::size_t A = N, std::size_t B = M>
+    std::enable_if_t<(A >= 64 && B >= 64), Matrix<dtype, 1, (N < M ? N : M)>> diag() const
+    {
         Matrix<dtype, 1, (N < M ? N : M)> ret_matrix;
 #pragma omp parallel for
         for (size_t i = 0; i < (N < M ? N : M); ++i) {
             ret_matrix.set(0, i, this->get(i, i));
         }
         return ret_matrix;
-    };
+    }
 
     dtype trace() const {
         dtype ret_value = dtype();
@@ -235,12 +247,59 @@ public:
         Matrix<dtype, M, N> ret_matrix;
 #pragma omp parallel for
         for (size_t i = 0; i < N; ++i) {
-#pragma omp parallel for
             for (size_t j = 0; j < M; ++j) {
                 ret_matrix.set(j, i, this->get(i, j));
             }
         }
         return ret_matrix;
+    };
+
+    Matrix<dtype, N, M> operator+=(const Matrix<dtype, N, M>& rhs) {
+#if defined(_OPENMP)
+        #pragma omp parallel for
+    for (size_t i = 0; i < iN*iM; ++i) {
+        this->data[i] = this->data[i] + rhs.data[i];
+    }
+#else
+        std::transform(this->data.begin(), this->data.end(), rhs.data.begin(), this->data.begin(), std::plus<dtype>());
+#endif
+        return *this;
+    };
+
+    Matrix<dtype, N, M> operator-=(const Matrix<dtype, N, M>& rhs) {
+#if defined(_OPENMP)
+        #pragma omp parallel for
+    for (size_t i = 0; i < iN*iM; ++i) {
+        this->data[i] = this->data[i] - rhs.data[i];
+    }
+#else
+        std::transform(this->data.begin(), this->data.end(), rhs.data.begin(), this->data.begin(), std::minus<dtype>());
+#endif
+        return *this;
+    };
+
+    Matrix<dtype, N, M> operator*=(const Matrix<dtype, N, M>& rhs) {
+#if defined(_OPENMP)
+        #pragma omp parallel for
+    for (size_t i = 0; i < iN*iM; ++i) {
+        this->data[i] = this->data[i] * rhs.data[i];
+    }
+#else
+        std::transform(this->data.begin(), this->data.end(), rhs.data.begin(), this->data.begin(), std::multiplies<dtype>());
+#endif
+        return *this;
+    };
+
+    Matrix<dtype, N, M> operator/=(const Matrix<dtype, N, M>& rhs) {
+#if defined(_OPENMP)
+        #pragma omp parallel for
+    for (size_t i = 0; i < iN*iM; ++i) {
+        this->data[i] = this->data[i] / rhs.data[i];
+    }
+#else
+        std::transform(this->data.begin(), this->data.end(), rhs.data.begin(), this->data.begin(), std::divides<dtype>());
+#endif
+        return *this;
     };
 
     template<class ldtype, class rdtype, size_t iN, size_t iM>
